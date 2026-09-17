@@ -1,0 +1,7 @@
+{
+  "name": "محراب البيان",
+  "description": "منصة ذكية لحل أسئلة النحو والإعراب، البلاغة ومواطن الجمال، الأدب والنصوص، وإنشاء موضوعات التعبير بأسلوب فصيح مع دعم رفع والتقاط الصور.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

@@ -1,0 +1,236 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-alexandria: 'Alexandria', system-ui, -apple-system, sans-serif;
+    --font-cairo: 'Cairo', system-ui, -apple-system, sans-serif;
+    --font-amiri: 'Amiri', 'Noto Naskh Arabic', serif;
+  }
+}
+
+.font-alexandria {
+  font-family: var(--font-alexandria);
+}
+
+.font-amiri {
+  font-family: var(--font-amiri);
+}
+
+.font-cairo {
+  font-family: var(--font-cairo);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(13, 58, 51, 0.2);
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(167, 243, 208, 0.2);
+}
+
+/* Exact typography matching reference images with refined compact sizing */
+.prose-arabic h1, .prose-arabic h2 {
+  font-family: var(--font-alexandria), var(--font-amiri), sans-serif;
+  font-weight: 700;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+  color: #172622;
+}
+
+.dark .prose-arabic h1, .dark .prose-arabic h2 {
+  color: #e6f1ed;
+}
+
+.prose-arabic h3 {
+  font-family: var(--font-alexandria), var(--font-amiri), sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  margin-top: 1.15rem;
+  margin-bottom: 0.65rem;
+  color: #172622;
+}
+
+.dark .prose-arabic h3 {
+  color: #e6f1ed;
+}
+
+.prose-arabic p {
+  font-family: var(--font-alexandria), var(--font-cairo), sans-serif;
+  font-size: 0.925rem;
+  line-height: 1.75;
+  margin-bottom: 0.75rem;
+  color: #22332e;
+}
+
+.dark .prose-arabic p {
+  color: #d7e7e2;
+}
+
+.prose-arabic strong {
+  font-weight: 700;
+  color: #111d19;
+}
+
+.dark .prose-arabic strong {
+  color: #ffffff;
+}
+
+.prose-arabic blockquote {
+  border-right: 3px solid #0d3a33;
+  padding-right: 0.85rem;
+  margin: 0.85rem 0;
+  font-style: normal;
+  background-color: rgba(13, 58, 51, 0.04);
+  border-radius: 0.5rem;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.dark .prose-arabic blockquote {
+  border-right-color: #34d399;
+  background-color: rgba(52, 211, 153, 0.08);
+}
+
+/* Generous two-line spacing between divider lines and subsequent text */
+.prose-arabic hr {
+  margin-top: 2rem;
+  margin-bottom: 2.75rem; /* مسافة وافرة تعادل سطرين بين الخط الفاصل والسطر التالي */
+  border: 0;
+  border-top: 1.5px solid #e3d9c7;
+}
+
+.dark .prose-arabic hr {
+  border-top-color: #273d36;
+}
+
+/* Dedicated Reading Mode typography (comfortable long-reading) */
+.reading-mode-active h1, .reading-mode-active h2 {
+  font-size: 1.5rem !important;
+  line-height: 1.7 !important;
+  margin-top: 1.75rem !important;
+  margin-bottom: 1.25rem !important;
+}
+
+.reading-mode-active h3 {
+  font-size: 1.25rem !important;
+  line-height: 1.7 !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.reading-mode-active p {
+  font-size: 1.075rem !important;
+  line-height: 2.3 !important; /* تباعد مريح للأسطر للقراءة الطويلة */
+  margin-bottom: 1.5rem !important;
+  letter-spacing: 0.01em;
+}
+
+.reading-mode-active blockquote {
+  padding-right: 1.25rem !important;
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+  margin: 1.5rem 0 !important;
+  font-size: 1.05rem !important;
+  line-height: 2.2 !important;
+}
+
+.reading-mode-active table {
+  margin-top: 1.5rem !important;
+  margin-bottom: 2.5rem !important;
+  font-size: 0.975rem !important;
+}
+
+.reading-mode-active td {
+  line-height: 2 !important;
+  padding: 0.85rem 1rem !important;
+}
+
+.reading-mode-active hr {
+  margin-top: 2.5rem !important;
+  margin-bottom: 3.25rem !important; /* مساحة مضاعفة مريحة في وضع القراءة */
+}
+
+/* Elegant Table styling matching 77.PNG */
+.prose-arabic table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.prose-arabic th {
+  background-color: transparent;
+  color: #172622;
+  padding: 0.65rem 0.85rem;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1.5px solid #ded5c2;
+  font-size: 0.825rem;
+}
+
+.dark .prose-arabic th {
+  color: #e4efe9;
+  border-bottom-color: #2c423a;
+}
+
+.prose-arabic td {
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid #ebe2d3;
+  color: #22332e;
+  vertical-align: top;
+  line-height: 1.7;
+}
+
+.dark .prose-arabic td {
+  border-bottom-color: #233630;
+  color: #d7e7e2;
+}
+
+.prose-arabic tr:last-child td {
+  border-bottom: none;
+}
+
+@media (max-width: 640px) {
+  .prose-arabic h1, .prose-arabic h2 {
+    font-size: 1.3rem;
+  }
+  .prose-arabic h3 {
+    font-size: 1.15rem;
+  }
+  .prose-arabic p {
+    font-size: 0.95rem;
+    line-height: 1.8;
+  }
+  .prose-arabic th,
+  .prose-arabic td {
+    padding: 0.65rem 0.75rem !important;
+  }
+}
+
+/* Hide scrollbar for clean mobile horizontal scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

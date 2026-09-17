@@ -1,0 +1,246 @@
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { GoogleGenAI } from '@google/genai';
+import { createServer as createViteServer } from 'vite';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const PORT = 3000;
+
+// Enable JSON body parsing with large limit for image data URLs
+app.use(express.json({ limit: '25mb' }));
+
+let aiClient: GoogleGenAI | null = null;
+function getGeminiClient(): GoogleGenAI {
+  if (!aiClient) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn('GEMINI_API_KEY is not set in environment variables');
+    }
+    aiClient = new GoogleGenAI({
+      apiKey: apiKey || '',
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+  }
+  return aiClient;
+}
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// Main solve API endpoint
+app.post('/api/solve', async (req, res) => {
+  try {
+    const { question, mode, image } = req.body;
+
+    if (!question && !image) {
+      return res.status(400).json({ error: 'يرجى تقديم سؤال أو صورة للتحليل' });
+    }
+
+    const ai = getGeminiClient();
+
+    let modeInstruction = '';
+    if (mode === 'grammar') {
+      modeInstruction = `
+أنت الآن في وضع "نحو وصرف" المتخصص (مستقل تماماً عن البلاغة):
+- ادخل في الإجابة مباشرة وبدون أي مقدمات ترحيبية أو ختاميات إنشائية.
+- اتبع النموذج التنسيقي النموذجي التالي بالضبط (شديد الوضوح والتنظيم):
+  1. عنوان الإجابة:
+     ## إعراب: «الجملة مضبوطة بالشكل التام» (أو ## الفرق بين ... إذا كان مقارنة أو قاعدة).
+  2. إعراب الكلمات سطراً بسطر بنظام واضح:
+     **الكلمة:** إعرابها التفصيلي الدقيق مع بيان علامة الإعراب والتعليل النحوي.
+  3. إن كان في الجملة ما يستحق بيان محل الجمل، ضع قسم:
+     ### محل الجمل من الإعراب
+     **«الجملة»:** موقعها الإعرابي والسبب.
+  4. إن وجدت تنبيهات أو استدراكات هامة، ضع:
+     ### تنبيهان (أو تنبيهات هامة)
+  5. الخاتمة المركزة:
+     **الخلاصة:** ملخص سريع ودقيق لحكم الكلمات أو القاعدة.
+  6. إذا كان السؤال مقارنة بين أداتين أو قاعدتين (مثل الفرق بين كان وإن)، أو إذا طُلب جدول، فنسق المقارنة في جدول ماركداون أنيق برؤوس واضحة مثل (| وجه المقارنة | الأول | الثاني |).
+- لا تذكر أي صور بيانية أو بلاغية في هذا الوضع، وركز بنسبة 100% على النحو والصرف والقواعد.
+`;
+    } else if (mode === 'rhetoric') {
+      modeInstruction = `
+أنت الآن في وضع "علم البلاغة والتذوق الجمالي ومعجم الألفاظ والبيان":
+- ادخل في الإجابة مباشرة وبدون أي مقدمات ترحيبية أو ختاميات إنشائية.
+- إذا كان السؤال عن معنى كلمة عربية (خاصة الكلمات المعقدة، النادرة، غريب الألفاظ، أو المفردات التراثية الجزلة):
+  اتبع هذا التنسيق المنظم والمتقن:
+  1. ## معنى كلمة «الكلمة مضبوطة بالشكل التام»:
+  2. **المعنى اللغوي الدقيق وأصل الاشتقاق:** شرح دقيق للمعنى وفق أمهات معاجم اللغة (لسان العرب، القاموس المحيط، مقاييس اللغة)، مع ذكر الجذر والوزن الصرفي.
+  3. **تفكيك التعقيد وسياق الاستخدام:** إيضاح المعنى وتيسير فهمه بأسلوب سلس يزيل أي تعقيد أو التباس.
+  4. **الظلال البلاغية والإيحاء البياني:** سر اختيار هذه اللفظة، جرسها الصوتي وأثرها البلاغي في نفس السامع، ولماذا يُفضّلها البلغاء والشعراء على غيرها.
+  5. **الشاهد الفصيح وموطن الجمال:** بيت شعر عربي فصيح أو آية كريمة أو مثل مأثور وردت فيه الكلمة مع بيان موطن البلاغة.
+  6. **المترادفات والأضداد:** المرادفات الفصيحة الدقيقة والضد المباشر إن وجد.
+- إذا كان السؤال عن استخراج صور أو مواطن جمالية:
+  1. موطن الجمال (الصورة أو المحسن أو الأسلوب).
+  2. نوعه (تشبيه، استعارة، كناية، طباق، جناس...).
+  3. الشرح وسر الجمال والأثر بتركيز وفصاحة.
+- لا تضع جداول إعراب نحوي في هذا الوضع.
+`;
+    } else if (mode === 'grammar_rhetoric') {
+      modeInstruction = `
+أنت الآن في وضع "النحو والبلاغة المشترك":
+- ادخل في الإجابة مباشرة وبدون مقدمات.
+- قدم الإعراب الواضح والموجز بالحركات التامة، ثم استخرج مواطن الجمال البلاغية وسر جمالها باقتضاب وفصاحة.
+`;
+    } else if (mode === 'literature') {
+      modeInstruction = `
+أنت الآن في وضع "حل الأدب والنصوص وتذوق الشعر":
+- ادخل في الإجابة مباشرة وبإيجاز مركز:
+  - الغرض الشعري/النثري ومعاني الكلمات الأساسية.
+  - الفكرة والشرح الموجز والخصائص الأسلوبية المباشرة.
+`;
+    } else if (mode === 'composition') {
+      modeInstruction = `
+أنت الآن في وضع "إنشاء موضوع تعبير رفيع وبليغ":
+- ادخل مباشرة في نص الموضوع المنسق:
+  1. عنوان ملهم.
+  2. عناصر وفكر مرقمة موجزة.
+  3. مقدمة شائقة ومباشرة.
+  4. فقرات العرض المعززة بالشواهد (قرآن، حديث، شعر فصيح).
+  5. خاتمة تلخص الموضوع بدقة.
+`;
+    } else {
+      modeInstruction = `أجب عن السؤال بأعلى درجات الدقة والوضوح والإيجاز وبشكل مشكول ومباشر دون مقدمات إنشائية أو حشو.`;
+    }
+
+    const systemInstruction = `
+أنت "محراب البيان"، المرجع اللغوي الذكي المتخصص في علوم لغة الضاد.
+القواعد الصارمة للأداء وجودة الإجابة:
+1. الإيجاز والوضوح الشديد: اجعل الإجابة مختصرة وواضحة ومباشرة ومركّزة، واقطع أي حشو أو تطويل غير ضروري.
+2. السرعة والمباشرة: ابدأ بالحل مباشرة دون أي مقدمات ترحيبية أو عبارات مجاملة ودون ختاميات.
+3. منع وسوم HTML تماماً: ممنوع منعاً باتاً كتابة أي وسوم HTML مثل <br> أو <p> أو غيرها، واعتمد فقط على أسطر Markdown البسيطة.
+4. خلو الإجابة من أي رموز غريبة: تجنب تماماً استخدام أي رموز مشوهة أو شفرات، أو علامات مثل | :--- | بدون رأس جدول، أو نجوم متكررة (مثل ****)، أو رموز شاذة. اكتب بلغة عربية فصيحة ونقية وسهلة القراءة.
+5. الدقة والتشكيل: اضبط الكلمات النحوية والحركات الإعرابية (الضم، الفتح، الكسر، السكون) بدقة لغوية تامة.
+6. قراءة الصور: إذا أُرفقت صورة، استخرج نص السؤال بدقة وقدم الحل الواضح والمختصر فوراً.
+
+${modeInstruction}
+`;
+
+    const contents: any = [];
+
+    // If an image is provided
+    if (image && image.dataUrl) {
+      // Extract base64 and mime type from dataUrl
+      const matches = image.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (matches) {
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+        contents.push({
+          inlineData: {
+            mimeType: mimeType,
+            data: base64Data,
+          },
+        });
+      }
+    }
+
+    const userPrompt = question
+      ? `السؤال أو النص المطلوب:\n${question}`
+      : 'يرجى قراءة السؤال المكتوب في الصورة بدقة وحله حلاً نحوياً وبلاغياً وأدبياً شاملاً ومباشراً.';
+
+    contents.push({
+      text: userPrompt,
+    });
+
+    // Officially supported models with fallback resilience
+    // Using current supported models from gemini-api guidelines:
+    // Primary: gemini-3.8-flash (official default for basic/general text tasks)
+    // Fallbacks: gemini-flash-latest, gemini-3.1-flash-lite
+    const CANDIDATE_MODELS = [
+      'gemini-3.8-flash',
+      'gemini-flash-latest',
+      'gemini-3.1-flash-lite',
+    ];
+
+    let answer = '';
+    let lastError: any = null;
+
+    for (const modelName of CANDIDATE_MODELS) {
+      try {
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: contents,
+          config: {
+            systemInstruction: systemInstruction,
+            temperature: 0.1, // Near-deterministic precision for grammar
+            maxOutputTokens: 1200, // Ample token space for complete grammatical breakdowns
+          },
+        });
+
+        if (response.text) {
+          answer = response.text;
+          break;
+        }
+      } catch (err: any) {
+        console.warn(`Model ${modelName} call failed, attempting next candidate:`, err?.message || err);
+        lastError = err;
+      }
+    }
+
+    if (!answer) {
+      const errorDetail = lastError?.message || lastError?.toString() || 'تعذر الحصول على إجابة من خوادم الذكاء الاصطناعي';
+      throw new Error(errorDetail);
+    }
+
+    // Sanitize any weird symbols, HTML tags (<br>), or unicode artifacts
+    let cleanAnswer = answer
+      .replace(/[\uFFFD\uFEFF\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+      .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+      .replace(/<\/?[a-zA-Z][^>]*>/g, '')
+      .replace(/\*{3,}/g, '**')
+      .replace(/^```markdown\s*/i, '')
+      .replace(/^```\s*/, '')
+      .replace(/```\s*$/, '')
+      .replace(/\|\s*:\s*-+\s*\|\s*:\s*-+\s*\|\s*\|\s*/g, '| :--- | :--- |\n')
+      .replace(/\|\s*\|\s*$/gm, '|')
+      .replace(/[§¤█▓▒▲▼◄►◆◇★✦]/g, '')
+      .replace(/~{2,}/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.json({
+      answer: cleanAnswer,
+      success: true,
+    });
+  } catch (error: any) {
+    console.error('Error solving Arabic query:', error);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.status(500).json({
+      error: 'حدث خطأ أثناء معالجة السؤال النحوي. تفاصيل: ' + (error?.message || 'خطأ غير معروف'),
+      success: false,
+    });
+  }
+});
+
+async function startServer() {
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`محراب البيان يعمل على: http://localhost:${PORT}`);
+  });
+}
+
+startServer();
