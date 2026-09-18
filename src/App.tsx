@@ -14,6 +14,7 @@ import { Footer } from './components/Footer';
 import { AppMode, AttachedImage, ChatMessage, UserProfile, MainView } from './types';
 import { Loader2, AlertCircle, Square } from 'lucide-react';
 import { cleanArabicAnswer } from './utils/textCleaner';
+import { solveQuestionDirectly } from './utils/directGemini';
 
 const STORAGE_KEY_HISTORY = 'mihrab_bayan_history_v1';
 const STORAGE_KEY_USER = 'mihrab_bayan_user_v1';
@@ -153,36 +154,43 @@ export default function App() {
     abortControllerRef.current = controller;
 
     try {
-      const response = await fetch('/api/solve', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          question: questionText,
-          mode: mode,
-          image: image || null,
-        }),
-      });
+      let finalAnswer = '';
 
-      const contentType = response.headers.get('content-type') || '';
-      let data: any = null;
+      try {
+        const response = await fetch('/api/solve', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            question: questionText,
+            mode: mode,
+            image: image || null,
+          }),
+        });
 
-      if (contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        console.warn('Non-JSON response from /api/solve:', text.slice(0, 300));
-        throw new Error(
-          response.status === 504 || response.status === 502
-            ? 'استغرق التحليل وقتاً أطول من المعتاد على الخادم. يرجى المحاولة مجدداً الآن.'
-            : 'تعذر الاتصال بخدمة التحليل اللغوي (استجابة غير متوقعة من الخادم). يرجى المحاولة مرة أخرى.'
-        );
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await response.json();
+          if (response.ok && data.success && data.answer) {
+            finalAnswer = cleanArabicAnswer(data.answer);
+          } else {
+            throw new Error(data?.error || 'حدث خطأ في الخادم');
+          }
+        } else {
+          // If serverless or backend returned HTML/error page, fallback directly to Gemini client
+          console.warn('API route did not return JSON, attempting direct Gemini connection...');
+          finalAnswer = await solveQuestionDirectly(questionText, mode, image, controller.signal);
+        }
+      } catch (backendErr: any) {
+        if (backendErr.name === 'AbortError') throw backendErr;
+        console.warn('Backend attempt failed, trying direct Gemini fallback:', backendErr);
+        finalAnswer = await solveQuestionDirectly(questionText, mode, image, controller.signal);
       }
 
-      if (!response.ok || !data.success) {
-        throw new Error(data?.error || 'حدث خطأ أثناء الاتصال بالخادم.');
+      if (!finalAnswer) {
+        throw new Error('تعذر توليد الإجابة. يرجى المحاولة مرة أخرى.');
       }
 
       const newMsg: ChatMessage = {
@@ -190,7 +198,7 @@ export default function App() {
         mode: mode,
         question: questionText,
         image: image,
-        answer: cleanArabicAnswer(data.answer || ''),
+        answer: finalAnswer,
         createdAt: new Date().toISOString(),
         starred: false,
       };
