@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowUp, Image as ImageIcon, Camera, Upload, X, Loader2, Mic, MicOff } from 'lucide-react';
+import { ArrowUp, Image as ImageIcon, Camera, Upload, X, Loader2, Mic, MicOff, Square } from 'lucide-react';
 import { AppMode, AttachedImage } from '../types';
 
 interface ChatInputProps {
   mode: AppMode;
   onSubmit: (question: string, image?: AttachedImage) => void;
   isLoading: boolean;
+  onStopResponse?: () => void;
   onOpenCamera: () => void;
   attachedImage: AttachedImage | null;
   onClearImage: () => void;
@@ -18,6 +19,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   mode,
   onSubmit,
   isLoading,
+  onStopResponse,
   onOpenCamera,
   attachedImage,
   onClearImage,
@@ -308,24 +310,37 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
         {/* Bottom controls bar WITHOUT dividing line */}
         <div className="flex items-center justify-between mt-0.5 pt-0.5">
-          {/* Submit button on the left (in RTL) - compact */}
-          <button
-            id="submit-question-btn"
-            onClick={handleSend}
-            disabled={isLoading || (!inputText.trim() && !attachedImage)}
-            title="إرسال السؤال (Enter)"
-            className={`w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer ${
-              isLoading || (!inputText.trim() && !attachedImage)
-                ? 'bg-[#ded5c2] dark:bg-[#253933] text-[#8e8574] dark:text-[#526a62] cursor-not-allowed'
-                : 'bg-[#0d3a33] hover:bg-[#134d44] text-white dark:bg-[#1b554b] dark:hover:bg-[#236b5e] shadow-2xs'
-            }`}
-          >
-            {isLoading ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
-            ) : (
-              <ArrowUp className="w-3.5 h-3.5 stroke-[2.2]" />
-            )}
-          </button>
+          {/* Submit or Stop button on the left (in RTL) */}
+          {isLoading && onStopResponse ? (
+            <button
+              id="stop-response-btn"
+              type="button"
+              onClick={onStopResponse}
+              title="إيقاف الاستجابة فوراً"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-xs text-[11px] font-bold transition-all active:scale-95 cursor-pointer animate-pulse"
+            >
+              <Square className="w-3 h-3 fill-current" />
+              <span>إيقاف الاستجابة</span>
+            </button>
+          ) : (
+            <button
+              id="submit-question-btn"
+              onClick={handleSend}
+              disabled={isLoading || (!inputText.trim() && !attachedImage)}
+              title="إرسال السؤال (Enter)"
+              className={`w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer ${
+                isLoading || (!inputText.trim() && !attachedImage)
+                  ? 'bg-[#ded5c2] dark:bg-[#253933] text-[#8e8574] dark:text-[#526a62] cursor-not-allowed'
+                  : 'bg-[#0d3a33] hover:bg-[#134d44] text-white dark:bg-[#1b554b] dark:hover:bg-[#236b5e] shadow-2xs'
+              }`}
+            >
+              {isLoading ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <ArrowUp className="w-3.5 h-3.5 stroke-[2.2]" />
+              )}
+            </button>
+          )}
 
           {/* Action buttons on the right (in RTL): Voice Recording + Image Button */}
           <div className="flex items-center gap-1.5">

@@ -14,6 +14,8 @@ import {
   ScrollText,
   Feather,
   FileDown,
+  Bookmark,
+  BookmarkCheck,
 } from 'lucide-react';
 import { ChatMessage } from '../types';
 import { SmartTable } from './SmartTable';
@@ -34,6 +36,22 @@ export const ResultCard: React.FC<ResultCardProps> = ({
   onToggleReadingMode,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [savedToGlossary, setSavedToGlossary] = useState(false);
+
+  // Check if this message was already saved to glossary
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('mihrab_personal_glossary_v1');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.some((item: any) => item.id === `msg-${message.id}`)) {
+          setSavedToGlossary(true);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [message.id]);
 
   // Allow Escape key to exit reading mode
   useEffect(() => {
@@ -47,6 +65,54 @@ export const ResultCard: React.FC<ResultCardProps> = ({
   }, [isReadingMode, onToggleReadingMode]);
 
   const cleanedAnswer = cleanArabicAnswer(message.answer);
+
+  const handleSaveToGlossary = () => {
+    try {
+      const stored = localStorage.getItem('mihrab_personal_glossary_v1');
+      let currentGlossary: any[] = stored ? JSON.parse(stored) : [];
+
+      if (savedToGlossary) {
+        // Remove
+        currentGlossary = currentGlossary.filter((t) => t.id !== `msg-${message.id}`);
+        localStorage.setItem('mihrab_personal_glossary_v1', JSON.stringify(currentGlossary));
+        setSavedToGlossary(false);
+        return;
+      }
+
+      // Extract sensible term name
+      let termName = message.question.replace(/^(اشرح|معنى|ما معنى كلمة|ما إعراب|استخرج|بين|وضح)\s*/gi, '').trim();
+      termName = termName.replace(/^[«"']|[»"']$/g, '').trim();
+      if (!termName || termName.length > 50) {
+        // Fallback to first 4 words
+        termName = message.question.split(' ').slice(0, 4).join(' ');
+      }
+
+      // Categorize
+      let cat: 'grammar' | 'rhetoric' | 'vocabulary' | 'literature' = 'grammar';
+      if (message.mode === 'rhetoric') cat = 'rhetoric';
+      else if (message.mode === 'literature') cat = 'literature';
+      else if (message.mode === 'grammar_rhetoric') cat = 'grammar';
+
+      // Summary definition: first 250 chars of answer
+      const plainAnswer = cleanedAnswer.replace(/[#*`_]/g, '').trim();
+      const def = plainAnswer.slice(0, 300) + (plainAnswer.length > 300 ? '...' : '');
+
+      const newEntry = {
+        id: `msg-${message.id}`,
+        term: termName,
+        category: cat,
+        definition: def,
+        example: message.question !== termName ? `سياق السؤال: ${message.question}` : undefined,
+        createdAt: new Date().toISOString(),
+      };
+
+      currentGlossary = [newEntry, ...currentGlossary];
+      localStorage.setItem('mihrab_personal_glossary_v1', JSON.stringify(currentGlossary));
+      setSavedToGlossary(true);
+    } catch (e) {
+      console.error('Failed to save to glossary', e);
+    }
+  };
 
   const handleCopy = async () => {
     try {
@@ -159,6 +225,34 @@ export const ResultCard: React.FC<ResultCardProps> = ({
                 )}
               </button>
             )}
+
+            {/* Save to Personal Glossary */}
+            <button
+              id={`glossary-btn-${message.id}`}
+              onClick={handleSaveToGlossary}
+              title={
+                savedToGlossary
+                  ? 'تم الحفظ في معجمك الخاص (اضغط للإلغاء)'
+                  : 'حفظ هذا المصطلح أو الإعراب في معجمك الخاص للمراجعة لاحقاً'
+              }
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer active:scale-95 shadow-2xs ${
+                savedToGlossary
+                  ? 'bg-amber-500/15 border-amber-400 text-amber-800 dark:text-amber-300 font-bold'
+                  : 'border-[#ded5c2] dark:border-[#2b4139] bg-[#f4ede0] dark:bg-[#1b2d27] text-[#0d3a33] dark:text-[#6ee7b7] hover:bg-[#eae0cf] dark:hover:bg-[#233a32]'
+              }`}
+            >
+              {savedToGlossary ? (
+                <>
+                  <BookmarkCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300" />
+                  <span>محفوظ في معجمي</span>
+                </>
+              ) : (
+                <>
+                  <Bookmark className="w-3.5 h-3.5 text-[#0d3a33] dark:text-[#6ee7b7]" />
+                  <span>حفظ في معجمي</span>
+                </>
+              )}
+            </button>
 
             {/* Export as PDF button */}
             <button

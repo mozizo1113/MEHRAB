@@ -24,6 +24,27 @@ export interface ChatMessage {
   starred?: boolean;
 }
 
+export interface GlossaryTerm {
+  id: string;
+  term: string;
+  category: 'grammar' | 'rhetoric' | 'vocabulary' | 'literature';
+  definition: string;
+  subtext?: string;
+  example?: string;
+  createdAt: string;
+}
+
+export interface Article {
+  id: string;
+  title: string;
+  category: 'نحو' | 'بلاغة' | 'أدب وفصاحة' | 'معاجم وبيان';
+  readTime: string;
+  summary: string;
+  content: string;
+  author: string;
+  date: string;
+}
+
 export interface HistorySession {
   id: string;
   title: string;
@@ -33,3 +54,5 @@ export interface HistorySession {
   userId?: string;
   starred?: boolean;
 }
+
+export type MainView = 'chat' | 'articles' | 'glossary' | 'terms';

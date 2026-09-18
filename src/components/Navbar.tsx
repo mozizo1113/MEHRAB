@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, LogIn, User, Moon, Sun, BookMarked } from 'lucide-react';
-import { UserProfile } from '../types';
+import { Plus, LogIn, User, Moon, Sun, BookMarked, BookOpen, Bookmark, MessageSquare } from 'lucide-react';
+import { UserProfile, MainView } from '../types';
 import { AppLogo } from './AppLogo';
 
 interface NavbarProps {
@@ -12,6 +12,8 @@ interface NavbarProps {
   darkMode: boolean;
   onToggleDarkMode: () => void;
   historyCount: number;
+  currentView?: MainView;
+  onNavigate?: (view: MainView) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -22,20 +24,98 @@ export const Navbar: React.FC<NavbarProps> = ({
   darkMode,
   onToggleDarkMode,
   historyCount,
+  currentView = 'chat',
+  onNavigate,
 }) => {
   return (
     <header className="w-full border-b border-[#ded5c2] dark:border-[#243932] bg-[#faf6ee]/95 dark:bg-[#111a18]/95 backdrop-blur-md sticky top-0 z-30 transition-colors duration-300">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-2">
-        {/* Right side in RTL: Brand Logo matching تت.PNG */}
-        <AppLogo
-          size="sm"
-          showSubtitle={true}
-          subtitle="نحو، بلاغة، أدب وتعبير"
-          className="flex-shrink-0"
-        />
+        {/* Right side in RTL: Brand Logo */}
+        <div className="flex items-center gap-3 sm:gap-6">
+          <div
+            onClick={() => onNavigate?.('chat')}
+            className="cursor-pointer"
+            title="الرئيسية والمحراب"
+          >
+            <AppLogo
+              size="sm"
+              showSubtitle={true}
+              subtitle="نحو، بلاغة، أدب وتعبير"
+              className="flex-shrink-0"
+            />
+          </div>
+
+          {/* Central Navigation Links */}
+          {onNavigate && (
+            <nav className="hidden md:flex items-center gap-1 bg-[#ede4d2]/70 dark:bg-[#182a25] p-1 rounded-2xl border border-[#ded4bf] dark:border-[#263c35]">
+              <button
+                onClick={() => onNavigate('chat')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  currentView === 'chat'
+                    ? 'bg-[#0d3a33] text-white dark:bg-[#1a554a] shadow-2xs'
+                    : 'text-[#41554e] dark:text-[#a7bdb5] hover:text-[#0d3a33] dark:hover:text-[#e4efe9]'
+                }`}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>المحراب</span>
+              </button>
+
+              <button
+                onClick={() => onNavigate('articles')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  currentView === 'articles'
+                    ? 'bg-[#0d3a33] text-white dark:bg-[#1a554a] shadow-2xs'
+                    : 'text-[#41554e] dark:text-[#a7bdb5] hover:text-[#0d3a33] dark:hover:text-[#e4efe9]'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>المقالات اللغوية</span>
+              </button>
+
+              <button
+                onClick={() => onNavigate('glossary')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  currentView === 'glossary'
+                    ? 'bg-[#0d3a33] text-white dark:bg-[#1a554a] shadow-2xs'
+                    : 'text-[#41554e] dark:text-[#a7bdb5] hover:text-[#0d3a33] dark:hover:text-[#e4efe9]'
+                }`}
+              >
+                <Bookmark className="w-3.5 h-3.5" />
+                <span>معجمي الخاص</span>
+              </button>
+            </nav>
+          )}
+        </div>
 
         {/* Left side in RTL: Action Buttons matching ه.PNG & نم.PNG with subtle animations */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Mobile Quick Links for Articles & Glossary */}
+          {onNavigate && (
+            <div className="flex md:hidden items-center gap-1">
+              <button
+                onClick={() => onNavigate('articles')}
+                title="المقالات"
+                className={`p-2 rounded-xl border text-xs cursor-pointer ${
+                  currentView === 'articles'
+                    ? 'bg-[#0d3a33] text-white border-[#0d3a33]'
+                    : 'border-[#ded5c2] dark:border-[#2b3e38] text-[#334640] dark:text-[#c4d6d0]'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onNavigate('glossary')}
+                title="معجمي الخاص"
+                className={`p-2 rounded-xl border text-xs cursor-pointer ${
+                  currentView === 'glossary'
+                    ? 'bg-[#0d3a33] text-white border-[#0d3a33]'
+                    : 'border-[#ded5c2] dark:border-[#2b3e38] text-[#334640] dark:text-[#c4d6d0]'
+                }`}
+              >
+                <Bookmark className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
           {/* Animated Theme Toggle Button */}
           <motion.button
             whileHover={{ scale: 1.05 }}
