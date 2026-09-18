@@ -1,11 +1,7 @@
 import express from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3000;
@@ -14,20 +10,27 @@ const PORT = 3000;
 app.use(express.json({ limit: '25mb' }));
 
 let aiClient: GoogleGenAI | null = null;
+let currentClientKey: string | null = null;
+
+// The official active key provided for deployment
+const DEFAULT_FALLBACK_KEY = 'AQ.Ab8RN6JSqWTertCMvt5I58sQyKfoRvJVHES9m-56V8-rxY7j1A';
+
 function getGeminiClient(): GoogleGenAI {
-  if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY?.trim() || DEFAULT_FALLBACK_KEY;
+
+  if (!aiClient || currentClientKey !== apiKey) {
     if (!apiKey) {
       console.warn('GEMINI_API_KEY is not set in environment variables');
     }
     aiClient = new GoogleGenAI({
-      apiKey: apiKey || '',
+      apiKey: apiKey,
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
         },
       },
     });
+    currentClientKey = apiKey;
   }
   return aiClient;
 }
@@ -154,12 +157,12 @@ ${modeInstruction}
 
     // Officially supported models with fallback resilience
     // Using current supported models from gemini-api guidelines:
-    // Primary: gemini-3.8-flash (official default for basic/general text tasks)
-    // Fallbacks: gemini-flash-latest, gemini-3.1-flash-lite
+    // Prioritize high-availability, low-latency models with graceful fallbacks
     const CANDIDATE_MODELS = [
-      'gemini-3.8-flash',
-      'gemini-flash-latest',
       'gemini-3.1-flash-lite',
+      'gemini-3.8-flash',
+      'gemini-3.6-flash',
+      'gemini-flash-latest',
     ];
 
     let answer = '';
@@ -182,13 +185,24 @@ ${modeInstruction}
           break;
         }
       } catch (err: any) {
-        console.warn(`Model ${modelName} call failed, attempting next candidate:`, err?.message || err);
+        console.warn(`Model ${modelName} call failed:`, err?.message || err);
         lastError = err;
+        const msg = String(err?.message || '');
+        if (msg.includes('API_KEY_INVALID') || msg.includes('API key not valid') || msg.includes('400')) {
+          // If the API key is rejected as invalid, retrying other models won't help
+          break;
+        }
       }
     }
 
     if (!answer) {
-      const errorDetail = lastError?.message || lastError?.toString() || 'تعذر الحصول على إجابة من خوادم الذكاء الاصطناعي';
+      const rawError = lastError?.message || lastError?.toString() || '';
+      if (rawError.includes('API_KEY_INVALID') || rawError.includes('API key not valid')) {
+        throw new Error(
+          'مفتاح Gemini API غير صالح أو منتهي الصلاحية. يرجى تزويد مفتاح صالح يبدأ بـ AIzaSy أو التأكد من إعداد GEMINI_API_KEY في الإعدادات.'
+        );
+      }
+      const errorDetail = rawError || 'تعذر الحصول على إجابة من خوادم الذكاء الاصطناعي';
       throw new Error(errorDetail);
     }
 
