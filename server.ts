@@ -13,7 +13,7 @@ let aiClient: GoogleGenAI | null = null;
 let currentClientKey: string | null = null;
 
 // The official active key provided for deployment
-const DEFAULT_FALLBACK_KEY = 'AQ.Ab8RN6JSqWTertCMvt5I58sQyKfoRvJVHES9m-56V8-rxY7j1A';
+const DEFAULT_FALLBACK_KEY = 'AQ.Ab8RN6KNQkV8XuEotT6WV1LPrn4ugTBptPMOecc_gI9JgvfL1w';
 
 function getGeminiClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY?.trim() || DEFAULT_FALLBACK_KEY;
